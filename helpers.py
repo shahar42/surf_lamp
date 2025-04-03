@@ -1,139 +1,133 @@
-# iot_lamp_service/helpers.py
+# helpers.py
+
+# --- Imports ---
+# Make sure you have these imports at the top of your helpers.py
 import requests
-from flask import current_app, json # Use Flask's json for consistency if needed
+import json
+from flask import current_app # Needed for accessing config and logger
 
-def Workspace_isramar_data(location_name: str) -> dict | None:
+# --- Hardcoded URLs/Parameters for Hadera ---
+# URLs known to work from the original Arduino code
+HADERA_ISRAMAR_URL = "https://isramar.ocean.org.il/isramar2009/station/data/Hadera_Hs_Per.json"
+OWM_CITY = "Hadera" # City name for OpenWeatherMap
+
+# --- Helper Functions ---
+
+def Workspace_isramar_data(location):
     """
-    Fetches wave data from the ISRAMAR JSON endpoint for a given location name.
-
-    Args:
-        location_name: The key corresponding to the location in ISRAMAR_URL_MAP (e.g., 'Haifa').
-
-    Returns:
-        A dictionary {'wave_height_m': float, 'wave_period_s': float} on success,
-        None on failure (network error, invalid JSON, missing data).
+    Fetches and parses wave data from ISRAMAR.
+    MODIFIED: Ignores 'location' argument and ALWAYS fetches Hadera data.
+    Returns dict with 'wave_height_m' and 'wave_period_s' or None on error.
     """
-    url_map = current_app.config.get('ISRAMAR_URL_MAP', {})
-    url = url_map.get(location_name)
-
-    if not url:
-        current_app.logger.error(f"ISRAMAR URL not found for location: {location_name}")
-        return None
+    # Ignore the 'location' argument passed from app.py, always use Hadera URL
+    url = HADERA_ISRAMAR_URL
+    current_app.logger.info(f"Fetching ISRAMAR data for HARDCODED location 'Hadera' from: {url}")
 
     try:
-        response = requests.get(url, timeout=10) # Added timeout
+        response = requests.get(url, timeout=10) # 10 second timeout
         response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
 
         data = response.json()
+        wave_height = None
+        wave_period = None
 
-        # Navigate the nested structure based on observed ISRAMAR JSON format
-        # Example: {"Data":[{"date_time":"...", "Hs": "1.23", "Tp": "5.67", ...}, ...]}
-        # We typically want the latest entry if it's a list
-        if isinstance(data, dict) and 'Data' in data and isinstance(data['Data'], list) and data['Data']:
-            latest_data = data['Data'][0] # Assume first entry is latest, adjust if needed
-            height_str = latest_data.get('Hs') # Wave Height (m)
-            period_str = latest_data.get('Tp') # Wave Period (s)
+        # Parse based on original Arduino logic structure (parameters array)
+        if "parameters" in data and isinstance(data["parameters"], list):
+            for param in data["parameters"]:
+                # Check if param is a dictionary and has the expected keys/types
+                if isinstance(param, dict) and \
+                   "name" in param and \
+                   "values" in param and \
+                   isinstance(param["values"], list) and \
+                   len(param["values"]) > 0:
+                    try:
+                        # Attempt to convert value to float, handle potential errors
+                        value = float(param["values"][0])
+                        if param["name"] == "Significant wave height":
+                            wave_height = value
+                        elif param["name"] == "Peak wave period":
+                            wave_period = value
+                    except (ValueError, TypeError):
+                        current_app.logger.warning(f"Could not convert ISRAMAR value {param['values'][0]} to float for parameter '{param['name']}'.")
 
-            if height_str is not None and period_str is not None:
-                try:
-                    # Convert to float, handle potential conversion errors
-                    height_m = float(height_str)
-                    period_s = float(period_str)
-                    return {'wave_height_m': height_m, 'wave_period_s': period_s}
-                except (ValueError, TypeError):
-                     current_app.logger.error(f"ISRAMAR data conversion error for {location_name}. Height: '{height_str}', Period: '{period_str}'")
-                     return None
-            else:
-                current_app.logger.warning(f"ISRAMAR data missing 'Hs' or 'Tp' key for {location_name}. Data: {latest_data}")
-                return None
+
+        # Return data only if both values were found and are valid numbers
+        if wave_height is not None and wave_period is not None:
+             current_app.logger.info(f"ISRAMAR Hadera data parsed: H={wave_height}, P={wave_period}")
+             return {"wave_height_m": wave_height, "wave_period_s": wave_period}
         else:
-            current_app.logger.error(f"Unexpected ISRAMAR JSON structure or empty data for {location_name}. URL: {url}")
-            return None
+             current_app.logger.warning(f"Could not find valid wave height/period in ISRAMAR Hadera JSON structure.")
+             return None # Return None if data wasn't found/parsed correctly
 
     except requests.exceptions.RequestException as e:
-        current_app.logger.error(f"Error fetching ISRAMAR data for {location_name}: {e}")
+        current_app.logger.error(f"Error fetching ISRAMAR Hadera data: {e}")
         return None
     except json.JSONDecodeError as e:
-        current_app.logger.error(f"Error decoding ISRAMAR JSON for {location_name}: {e}")
-        return None
-    except Exception as e: # Catch any other unexpected errors
-        current_app.logger.error(f"Unexpected error processing ISRAMAR data for {location_name}: {e}")
-        return None
+         current_app.logger.error(f"Error decoding ISRAMAR Hadera JSON: {e}")
+         return None
+    except Exception as e:
+         # Catch any other unexpected errors during processing
+         current_app.logger.error(f"Unexpected error processing ISRAMAR Hadera data: {e}", exc_info=True)
+         return None
 
 
-def Workspace_owm_data(location_name: str) -> dict | None:
+def Workspace_owm_data(location):
     """
-    Fetches wind data from the OpenWeatherMap API for a given location name.
-
-    Args:
-        location_name: The city name to query (e.g., 'Haifa').
-
-    Returns:
-        A dictionary {'wind_speed_mps': float, 'wind_deg': int} on success,
-        None on failure (network error, invalid JSON, missing data, API key issue).
+    Fetches and parses wind data from OpenWeatherMap.
+    MODIFIED: Ignores 'location' argument and ALWAYS fetches Hadera data.
+    Returns dict with 'wind_speed_mps' and 'wind_deg' or None on error.
     """
+    # Ignore the 'location' argument passed from app.py, always use Hadera
+    city = OWM_CITY
     api_key = current_app.config.get('OPENWEATHERMAP_API_KEY')
-    base_url = current_app.config.get('OPENWEATHERMAP_API_URL')
+    # Get base URL from config, default if not set
+    base_url = current_app.config.get('OPENWEATHERMAP_API_URL', "https://api.openweathermap.org/data/2.5/weather")
 
-    if not api_key or not base_url:
-        current_app.logger.error("OpenWeatherMap API Key or URL is not configured.")
+    if not api_key:
+        current_app.logger.error("OpenWeatherMap API Key not configured.")
         return None
 
-    # Add country code for better accuracy, assuming Israel for now
-    query_param = f"{location_name},IL"
     params = {
-        'q': query_param,
+        'q': city,
         'appid': api_key,
-        'units': 'metric' # Get speed in m/s
+        'units': 'metric' # Request units in meters/sec
     }
+    current_app.logger.info(f"Fetching OWM data for HARDCODED location '{city}' with params: {params}")
 
     try:
-        response = requests.get(base_url, params=params, timeout=10) # Added timeout
-        response.raise_for_status() # Raise HTTPError for bad responses (like 401 Unauthorized)
+        response = requests.get(base_url, params=params, timeout=10) # 10 second timeout
+        response.raise_for_status() # Raise HTTPError for bad responses
 
         data = response.json()
+        wind_speed = None
+        wind_deg = None
 
-        # Navigate the OWM current weather JSON structure
-        # Example: {"wind": {"speed": 3.13, "deg": 210}, "cod": 200, ...}
-        if data.get('cod') == 200 and 'wind' in data:
+        # Safely extract wind data
+        if isinstance(data.get('wind'), dict):
             wind_data = data['wind']
-            speed = wind_data.get('speed') # Wind speed (m/s)
-            deg = wind_data.get('deg')     # Wind direction (degrees)
+            # Check types before assigning
+            if isinstance(wind_data.get('speed'), (int, float)):
+                wind_speed = float(wind_data['speed'])
+            if isinstance(wind_data.get('deg'), (int, float)):
+                wind_deg = int(wind_data['deg'])
 
-            # OWM might omit 'deg' if wind is variable or speed is very low
-            if speed is not None:
-                try:
-                    # Ensure speed is float, deg is int (or default if missing)
-                    speed_mps = float(speed)
-                    # Use get(key, default) for degree, providing 0 if missing
-                    wind_deg = int(deg) if deg is not None else 0
-                    return {'wind_speed_mps': speed_mps, 'wind_deg': wind_deg}
-                except (ValueError, TypeError):
-                    current_app.logger.error(f"OWM data conversion error for {location_name}. Speed: '{speed}', Deg: '{deg}'")
-                    return None
-            else:
-                 current_app.logger.warning(f"OWM data missing 'wind.speed' for {location_name}. Data: {data}")
-                 return None
-        elif data.get('cod') != 200:
-             current_app.logger.error(f"OpenWeatherMap API error for {location_name}. Code: {data.get('cod')}, Message: {data.get('message')}")
-             return None
+        # Return data only if both values were found and are valid
+        if wind_speed is not None and wind_deg is not None:
+            current_app.logger.info(f"OWM Hadera data parsed: Speed={wind_speed}, Deg={wind_deg}")
+            return {"wind_speed_mps": wind_speed, "wind_deg": wind_deg}
         else:
-            current_app.logger.error(f"Unexpected OWM JSON structure for {location_name}. Data: {data}")
-            return None
+            current_app.logger.warning(f"Could not find valid wind speed/deg in OWM Hadera JSON structure.")
+            return None # Return None if data wasn't found/parsed correctly
 
-    except requests.exceptions.HTTPError as e:
-         # Specifically log 401 Unauthorized errors which usually mean API key issues
-        if e.response.status_code == 401:
-             current_app.logger.error(f"OpenWeatherMap API Key Error (401 Unauthorized). Check your key.")
-        else:
-            current_app.logger.error(f"HTTP error fetching OWM data for {location_name}: {e}")
-        return None
     except requests.exceptions.RequestException as e:
-        current_app.logger.error(f"Network error fetching OWM data for {location_name}: {e}")
+        current_app.logger.error(f"Error fetching OWM Hadera data: {e}")
         return None
     except json.JSONDecodeError as e:
-        current_app.logger.error(f"Error decoding OWM JSON for {location_name}: {e}")
-        return None
-    except Exception as e: # Catch any other unexpected errors
-        current_app.logger.error(f"Unexpected error processing OWM data for {location_name}: {e}")
-        return None
+         current_app.logger.error(f"Error decoding OWM Hadera JSON: {e}")
+         return None
+    except Exception as e:
+         # Catch any other unexpected errors
+         current_app.logger.error(f"Unexpected error processing OWM Hadera data: {e}", exc_info=True)
+         return None
+
+# --- You might have other helper functions below ---
