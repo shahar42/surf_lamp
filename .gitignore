@@ -1,1 +1,97 @@
+# --- Python Virtual Environments ---
+venv/
+.venv/
+env/
+ENV/
+*/env/
+*/venv/
+*/.venv/
+*/ENV/
+env.bak/
+venv.bak/
+
+# --- Python Cache & Compiled Files ---
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.Python
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+.pytest_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# --- Distribution / Build Artifacts ---
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.manifest
+pip-log.txt
+pip-delete-this-directory.txt
+
+# --- Secrets & Configuration (DO NOT COMMIT!) ---
 .env
+.flaskenv
+secrets.*
+config.local.py
+*.pem
+*.key
+credentials*
+
+# --- Local Databases (DO NOT COMMIT!) ---
+instance/  # <<< IMPORTANT: Ignore the instance folder containing SQLite DB
+*.db
+*.sqlite
+*.sqlite3
+*.sql # Ignore unless they are intentional schema definitions
+*.dump
+
+# --- Log Files ---
+*.log
+logs/
+*.log.*
+
+# --- IDE / Editor Files ---
+.idea/
+.vscode/
+*.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+*.komodoproject
+*.bak
+*~
+
+# --- Operating System Files ---
+.DS_Store
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# --- Temporary Files ---
+tmp/
+temp/
+*.tmp
+
+# --- Other ---
+output/
+# data/ # Uncomment if you have a data dir you don't want to commit
