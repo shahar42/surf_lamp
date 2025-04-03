@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>Lamp Settings for {{ current_user.lamp_id }}</h2>
+  <p class="text-muted">User: {{ current_user.username }}</p>
+  <hr class="my-4"/>
+  <form method="POST" action="{{ url_for('settings') }}">
+    <div class="mb-3">
+        <label for="location" class="form-label">Weather Location</label>
+        <select class="form-select" id="location" name="location" required>
+            <option value="" {% if not current_location %}selected{% endif %} disabled>-- Select Location --</option>
+            {% for loc in available_locations %}
+            <option value="{{ loc }}" {% if loc == current_location %}selected{% endif %}>{{ loc }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-4"> {# Increased margin bottom #}
+        <label for="brightness" class="form-label">Lamp Brightness: <span id="brightnessValue">{{ current_brightness }}</span>%</label>
+        <input type="range" class="form-range" id="brightness" name="brightness" min="0" max="100" value="{{ current_brightness }}" oninput="updateBrightnessValue(this.value)">
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Settings</button> {# Changed from btn-success #}
+  </form>
+
+  <script>
+    // Simple script to update the displayed brightness value as the slider moves
+    function updateBrightnessValue(value) {
+      document.getElementById('brightnessValue').textContent = value;
+    }
+    // Initialize the value on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateBrightnessValue(document.getElementById('brightness').value);
+    });
+  </script>
+{% endblock %}

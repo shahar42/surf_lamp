@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }} - Wave Lamp Control</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+      /* Apply base font and full height */
+      html, body {
+        min-height: 100vh;
+        font-family: 'Poppins', sans-serif;
+      }
+
+      /* Background Gradient */
+      body {
+        background: linear-gradient(to bottom, #87CEEB, #ADD8E6, #F5E6CA); /* Sky Blue -> Lighter Blue -> Sandy */
+        background-attachment: fixed; /* Keep gradient fixed during scroll */
+        padding-top: 6rem; /* Adjust padding for fixed navbar height */
+      }
+
+      /* Thematic Headings */
+      h1, h2, h3, h4, .navbar-brand {
+        font-family: 'Pacifico', cursive;
+      }
+
+      /* Navbar Styling */
+      .navbar {
+        background-color: rgba(0, 119, 204, 0.8) !important; /* Thematic blue, semi-transparent */
+        backdrop-filter: blur(8px); /* Blur effect for background */
+        -webkit-backdrop-filter: blur(8px); /* Safari prefix */
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      }
+       /* Ensure navbar brand uses Pacifico */
+      .navbar-brand {
+        font-size: 1.75rem; /* Make brand slightly larger */
+      }
+       /* Adjust link colors for dark navbar */
+      .navbar-dark .navbar-nav .nav-link {
+          color: rgba(255,255,255,.85);
+          font-weight: 500;
+      }
+      .navbar-dark .navbar-nav .nav-link:hover {
+          color: #ffffff;
+      }
+      .navbar-dark .navbar-toggler-icon {
+         background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.85%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+      }
+
+
+      /* Content Area Styling */
+      main.container {
+        background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent white */
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        max-width: 760px;
+        margin-bottom: 2rem; /* Add some space at the bottom */
+      }
+
+      /* Form Styling */
+      .form-control {
+        border-radius: 0.5rem; /* Slightly rounded inputs */
+      }
+      .form-control:focus {
+         border-color: #0077cc;
+         box-shadow: 0 0 0 0.25rem rgba(0, 119, 204, 0.25);
+      }
+      .form-select {
+         border-radius: 0.5rem;
+      }
+
+      /* Button Styling */
+      .btn-primary {
+        background-color: #0077cc; /* Thematic blue */
+        border-color: #0077cc;
+        border-radius: 50px; /* Pill shape */
+        padding: 0.6rem 1.75rem;
+        font-weight: 500;
+        transition: all 0.2s ease-in-out;
+      }
+
+      .btn-primary:hover {
+        background-color: #0056b3; /* Darker blue on hover */
+        border-color: #0056b3;
+        transform: translateY(-2px); /* Subtle lift */
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      }
+
+      /* Link Styling */
+      a {
+        color: #0056b3;
+        text-decoration: none;
+      }
+      a:hover {
+        color: #003d80;
+        text-decoration: underline;
+      }
+
+      /* Slider value display */
+      #brightnessValue {
+          font-weight: bold;
+          color: #0077cc;
+      }
+
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top"> <div class="container-fluid">
+        <a class="navbar-brand" href="{{ url_for('index') }}">Wave Lamp</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+          <ul class="navbar-nav ms-auto mb-2 mb-md-0">
+            {% if current_user.is_authenticated %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('settings') }}">Settings</a></li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Logout ({{ current_user.username }})</a></li>
+            {% else %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">Login</a></li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('register') }}">Register Lamp</a></li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  </body>
+</html>
