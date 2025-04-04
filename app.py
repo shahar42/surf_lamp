@@ -214,6 +214,7 @@ def get_lamp_config():
 
     # --- Initialize Response ---
     response_data = {
+        "api_version": "1.0",  # Include API version
         "registered": lamp.is_registered,
         "brightness": lamp.brightness_setting,
         "location_used": None, # Will be updated if weather is fetched
@@ -261,8 +262,6 @@ def get_lamp_config():
         pass # Defaults are already None/False
 
     return jsonify(response_data), 200
-
-
 # --- Error Handlers ---
 @app.errorhandler(404)
 def not_found_error(error):
